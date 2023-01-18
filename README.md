@@ -1,2 +1,2 @@
 # zapier-intacct
-An Intacct integration for Zapier
+An Intacct integration for Zapier.
