@@ -1,7 +1,8 @@
 {
     "name": "intacct-by-cogniza",
     "version": "1.0.1",
-    "description": "An Intacct integration for Zapier.",
+    "description": "An integration for Sage Intacct.  The integration interacts with Intacct's [Web Service API](https://developer.intacct.com/web-services/).",
+    "homepage": "https://github.com/craibuc/zapier-intacct",
     "main": "index.js",
     "scripts": {
         "test": "jest --testTimeout 10000"
