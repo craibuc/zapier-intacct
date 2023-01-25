@@ -2,15 +2,6 @@
 
 'use strict';
 
-// You want to make a request to an endpoint that is either specifically designed
-// to test auth, or one that every user will have access to. eg: `/me`.
-// By returning the entire request object, you have access to the request and
-// response data for testing purposes. Your connection label can access any data
-// from the returned response using the `json.` prefix. eg: `{{json.username}}`.
-
-// const test = (z, bundle) =>
-//   z.request({ url: 'https://auth-json-server.zapier-staging.com/me' });
-
 /**
  * Tests the connection to Intacct by getting the LOCATION of RECORDNO=1.
  * 
@@ -21,50 +12,41 @@
  * 
  * @param {*} z - request/response object (unused)
  * @param {*} bundle 
- * @returns {Object}
+ * @returns {Object} object
  */
 const test = async (z, bundle) => {
 
   const IA = require("@intacct/intacct-sdk");
+  const intacct = require('./intacct/intacct');
 
   try {
 
-    const bootstrap = require("./intacct/bootstrap");
-    const client = bootstrap.client(bundle);
+    const client = intacct.get_client(bundle.authData)
 
-    // const bootstrap = require("./bootstrap");
-    // let logger = bootstrap.logger();
-    // const client = bootstrap.client(logger);
+    // get LOCAITONs; if an error isn't raised, then authentication was a success
+    const location = await intacct.get_objects_by_key(client, 'LOCATION', [], ['RECORDNO','LOCATIONID','NAME','STATUS'])
 
-    const read = new IA.Functions.Common.Read();
-    read.objectName = "LOCATION"
-    read.fields = ['RECORDNO','LOCATIONID','NAME','STATUS']
-    read.keys = [1]
-
-    const readResponse = await client.execute(read);
-    const data = readResponse.getResult().data;
-    console.debug(data)
-
-    return { 
+    return {
       status: 200,
-      json: data[0] // first element in the array
+      json: {
+          company_id: bundle.authData.company_id
+        }
     }
 
   } 
   catch (ex) {
+    z.console.error(ex.message)
 
-    z.console.log(ex.message)
+    if (ex instanceof IA.Exceptions.ResponseException) {
+      // XL03000006 Sign-in information is incorrect - bad user id
+      // XL03000006 Incorrect Intacct XML Partner ID or password. - bad sender id
+      // Response control status failure - invalidRequest Invalid Request - bad company id
 
-    // XL03000006 Sign-in information is incorrect - bad user id
-    // XL03000006 Incorrect Intacct XML Partner ID or password. - bad sender id
-    // Response control status failure - invalidRequest Invalid Request - bad company id
-
-    // if (ex instanceof IA.Exceptions.ResponseException) {
-    //   console.debug('******************** A ********************')
-    // } 
-    // else {
-    //   console.debug('******************** B ********************')
-    // }
+      // throw new z.errors.Error(ex.message, 'Unauthorized', 401)
+    } 
+    else {
+      // throw new z.errors.Error(ex.message, 'Internal Server Error', 500)
+    }
 
     return { status: 401 }
 
@@ -81,52 +63,30 @@ const test = async (z, bundle) => {
  */
 const getOnlineClient = async (z, bundle) => {
 
+  // z.console.log('getOnlineClient')
+
   const IA = require("@intacct/intacct-sdk");
+  const intacct = require('./intacct/intacct');
 
   try {
-  
-    const bootstrap = require("./intacct/bootstrap");
-    const client = bootstrap.client(bundle);
-  
-    // bundle.authData.client = client;
 
-    return { client: client };
+    return {
+      client: intacct.get_client(bundle.authData)
+    }
 
   }
   catch (ex) {
-
-    z.console.log(ex.message)
-
+    
     if (ex instanceof IA.Exceptions.ResponseException) {
-        console.error("An Intacct response exception was thrown", {
-            "Class": ex.constructor.name,
-            "Message": ex.message,
-            "API Errors": ex.errors,
-        });
-        console.log("Failed! " + ex.message);
+      throw new z.errors.Error(ex.message, 'Bad Request', 400)
     } 
     else {
-        console.error("An exception was thrown", {
-            "Class": ex.constructor.name,
-            "Message": ex.message,
-        });
-
+      throw new z.errors.Error(ex.message, 'Internal Server Error', 500)
     }
 
-  } // catch
+  }
 
 };
-
-// This function runs before every outbound request. You can have as many as you
-// need. They'll need to each be registered in your index.js file.
-// const includeSessionKeyHeader = (request, z, bundle) => {
-//   if (bundle.authData.sessionKey) {
-//     request.headers = request.headers || {};
-//     request.headers['X-API-Key'] = bundle.authData.sessionKey;
-//   }
-
-//   return request;
-// };
 
 module.exports = {
   config: {
@@ -138,11 +98,11 @@ module.exports = {
     // Define any input app's auth requires here. The user will be prompted to enter
     // this info when they connect their account.
     fields: [
-      { computed: false, key: 'sender_id', required: true, label: 'Sender ID', type: 'string', },
-      { computed: false, key: 'sender_password', required: true, label: 'Sender Password', type: 'password', },
-      { computed: false, key: 'user_id', required: true, label: 'User ID', type: 'string', },
-      { computed: false, key: 'user_password', required: true, label: 'User Password', type: 'password', },
-      { computed: false, key: 'company_id', required: true, label: 'Company ID', type: 'string', },
+      { computed: false, key: 'senderId', required: true, label: 'Sender ID', type: 'string',  helpText: '[Sender ID](https://developer.intacct.com/web-services/)',},
+      { computed: false, key: 'senderPassword', required: true, label: 'Sender Password', type: 'password', helpText: '[Sender Password](https://developer.intacct.com/web-services/)'},
+      { computed: false, key: 'userId', required: true, label: 'User ID', type: 'string', helpText: '[User ID](https://developer.intacct.com/web-services/)'},
+      { computed: false, key: 'userPassword', required: true, label: 'User Password', type: 'password', helpText: '[User Password](https://developer.intacct.com/web-services/)'},
+      { computed: false, key: 'companyId', required: true, label: 'Company ID', type: 'string', helpText: '[Company ID](https://developer.intacct.com/web-services/)'},
     ],
 
     // The test method allows Zapier to verify that the credentials a user provides
@@ -156,7 +116,7 @@ module.exports = {
     // be `{{X}}`. This can also be a function that returns a label. That function has
     // the standard args `(z, bundle)` and data returned from the test can be accessed
     // in `bundle.inputData.X`.
-    connectionLabel: '{{json.NAME}}',
+    connectionLabel: '{{json.company_id}}',
   },
   befores: [
     // includeSessionKeyHeader
