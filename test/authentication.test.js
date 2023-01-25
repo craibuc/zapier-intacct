@@ -1,105 +1,106 @@
-/* globals describe, it, expect */
-
 const zapier = require('zapier-platform-core');
 const App = require('../index');
 const appTester = zapier.createAppTester(App);
 
-// read the `.env` file into the environment, if available
-zapier.tools.env.inject();
-
 const IA = require("@intacct/intacct-sdk");
+// const intacct = require('../intacct/intacct');
 
-describe('getOnlineClient', () => {
+describe('authentication', () => {
 
-  it('creates an OnlineClient instance', async () => {
+  // read the `.env` file into the environment, if available
+  zapier.tools.env.inject();
 
-    // arrange
-    let bundle = {
-      authData: {},
-    };
+  describe('getOnlineClient', () => {
 
-    // act
-    const newAuthData = await appTester(
-      App.authentication.sessionConfig.perform,
-      bundle
-    );
-
-    // assert
-    expect(newAuthData.client).toBeInstanceOf(IA.OnlineClient);
-
-  });
-
-});
-
-describe('test', () => {
-
-  describe('when valid credentials are supplied', () => {
-
-    // arrange
-    let bundle = {
-      authData: {
-        company_id: process.env.INTACCT_COMPANY_ID,
-        sender_id: process.env.INTACCT_SENDER_ID,
-        sender_password: process.env.INTACCT_SENDER_PASSWORD,
-        user_id: process.env.INTACCT_USER_ID,
-        user_password: process.env.INTACCT_USER_PASSWORD,
-      },
-    };
-
-    it('returns OK [200]', async () => {
-      // act
-      const response = await appTester(App.authentication.test, bundle);
-
-      // assert
-      expect(response.status).toBe(200);
-    });
-
-    it('returns RECORDNO 1', async () => {
-      // act
-      const response = await appTester(App.authentication.test, bundle);
-
-      // assert
-      expect(response.json.RECORDNO).toBe('1');
-    });
-
-  });
-
-  describe('when invalid credentials are supplied', () => {
-
-    it('returns Unauthorized [401]', async () => {
+    it('creates an OnlineClient instance', async () => {
 
       // arrange
       let bundle = {
-        authData: {
-          company_id: 'dummy',
-          sender_id: 'dummy',
-          sender_password: 'dummy',
-          user_id: 'dummy',
-          user_password: 'dummy',
-          },
+        authData: {},
       };
-  
+
       // act
-      const response = await appTester(App.authentication.test, bundle);
+      const newAuthData = await appTester(
+        App.authentication.sessionConfig.perform,
+        bundle
+      );
 
       // assert
-      expect(response.status).toBe(401);
+      expect(newAuthData.client).toBeInstanceOf(IA.OnlineClient);
 
     });
 
   });
 
-  // it('has auth details added to every request', async () => {
-  //   const bundle = {
-  //     authData: {
-  //       sessionKey: 'secret',
-  //     },
-  //   };
+  describe('test', () => {
 
-  //   const response = await appTester(App.authentication.test, bundle);
+    describe('when valid credentials are supplied', () => {
+  
+      // arrange
+      let bundle = {
+        authData: {
+          companyId: process.env.INTACCT_COMPANY_ID,
+          senderId: process.env.INTACCT_SENDER_ID,
+          senderPassword: process.env.INTACCT_SENDER_PASSWORD,
+          userId: process.env.INTACCT_USER_ID,
+          userPassword: process.env.INTACCT_USER_PASSWORD,
+        },
+      };
+  
+      it('returns OK [200]', async () => {
+        // act
+        const response = await appTester(
+          App.authentication.test, 
+          bundle
+        );
+  
+        // assert
+        expect(response.status).toBe(200);
 
-  //   expect(response.status).toBe(200);
-  //   expect(response.request.headers['X-API-Key']).toBe('secret');
-  // });
+      });
+  
+      it('returns the company_id', async () => {
+        // act
+        const response = await appTester(
+          App.authentication.test, 
+          bundle
+        );
+  
+        // assert
+        expect(response.json.company_id).toBe(bundle.authData.company_id);
+
+      });
+  
+    });
+  
+    describe('when invalid credentials are supplied', () => {
+  
+      it('returns Unauthorized [401]', async () => {
+  
+        // arrange
+        let bundle = {
+          authData: {
+            companyId: 'dummy',
+            senderId: 'dummy',
+            senderPassword: 'dummy',
+            userId: 'dummy',
+            userPassword: 'dummy',
+            },
+        };
+    
+        // act
+        const response = await appTester(
+          App.authentication.test, 
+          bundle
+        );
+  
+        // assert
+        expect(response.status).toBe(401);
+  
+      });
+  
+    });
+    
+  });
 
 });
